@@ -1,0 +1,23 @@
+{
+  "name": "swagdemo",
+  "version": "1.0.0",
+  "description": "SWAG 官網自動登入測試（Playwright + TypeScript, Page Object Model）",
+  "main": "index.js",
+  "scripts": {
+    "login": "node scripts/capture-session.js",
+    "test": "playwright test --project=authenticated",
+    "test:e2e": "playwright test --project=e2e-login",
+    "test:login": "playwright test --project=e2e-login login.spec.ts",
+    "test:negative": "playwright test --project=e2e-login login.negative.spec.ts",
+    "report": "playwright show-report"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "dotenv": "^17.4.2",
+    "typescript": "^6.0.3"
+  }
+}
