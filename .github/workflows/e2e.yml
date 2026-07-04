@@ -1,0 +1,55 @@
+name: SWAG Login E2E (session reuse)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  session-reuse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser (Chromium)
+        run: npx playwright install --with-deps chromium
+
+      - name: Restore authenticated Chrome profile from secret
+        env:
+          PROFILE_B64: ${{ secrets.SWAG_CHROME_PROFILE_B64 }}
+        run: |
+          if [ -z "$PROFILE_B64" ]; then
+            echo "::error::缺少 secret SWAG_CHROME_PROFILE_B64。請先在本機 npm run login 並依 README 建立 secret。"
+            exit 1
+          fi
+          echo "$PROFILE_B64" | base64 -d > chrome-profile.tar.gz
+          mkdir -p playwright
+          tar -xzf chrome-profile.tar.gz -C playwright
+          rm chrome-profile.tar.gz
+
+      - name: Create .env from secrets
+        run: |
+          {
+            echo "BASE_URL=https://swag.live/?lang=zh-TW"
+            echo "SWAG_USERNAME=${{ secrets.SWAG_USERNAME }}"
+            echo "SWAG_PASSWORD=${{ secrets.SWAG_PASSWORD }}"
+            echo "CAPTCHA_TIMEOUT_MS=120000"
+          } > .env
+
+      - name: Run session-reuse test (headless, no CAPTCHA)
+        run: npm test
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
