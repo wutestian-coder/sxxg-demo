@@ -54,12 +54,10 @@ export class LoginPage {
   }
 
   private async waitForCaptchaVisible(timeoutMs: number): Promise<boolean> {
-    const deadline = Date.now() + timeoutMs;
-    while (Date.now() < deadline) {
-      if (await this.captchaBox.isVisible()) return true;
-      await this.page.waitForTimeout(500);
-    }
-    return false;
+    return this.captchaBox
+      .waitFor({ state: 'visible', timeout: timeoutMs })
+      .then(() => true)
+      .catch(() => false);
   }
 
   async login(username: string, password: string): Promise<void> {
