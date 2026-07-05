@@ -2,7 +2,7 @@
 
 swag.live 登入功能的 E2E 測試，用 Playwright + TypeScript，POM 分層。
 
-登入會跳 Geetest v4 滑塊，這本來就是設計來擋機器人的。我沒有去破解它，改成半自動：帳密輸入、送出、登入結果判定都自動化，滑塊留給人工拖，而且只拖一次——解完就把登入狀態存下來重用。詳細理由寫在下面的設計取捨。
+登入會跳 Geetest v4 滑塊，這本來就是設計來擋機器人的。我沒有去破解它，改成半自動：帳密輸入、送出、登入結果判定都自動化，滑塊留給人工拖，而且只拖一次，解完就把登入狀態存下來重用。理由寫在下面。
 
 ## 技術選型
 
@@ -87,19 +87,13 @@ npm test        # 之後用已登入設定檔全自動跑，不用再登入
 
 ## 設計取捨
 
-**滑塊用半自動，不寫程式破解。** Geetest 後端會分析拖曳軌跡、時間、裝置指紋來判斷是不是機器人。偽造軌跡去解，成功率不穩會 flaky，本質上也是在繞網站風控。所以人工過一次、之後重用登入狀態，把人工成本壓到只發生一次。
+**沒有寫程式去破解滑塊。** Geetest 會分析拖曳軌跡、時間、裝置指紋來判斷是不是機器人，偽造軌跡去解成功率不穩、容易 flaky，本質上也是在繞人家的風控。人工過一次就好，之後重用登入狀態。
 
-**用系統 Chrome 而不是內建 Chromium。** 試過內建 Chromium 會露出 `navigator.webdriver` 之類的自動化特徵，Geetest 直接封（Error 60500），連人工都拖不動。換成系統 Chrome（`channel: 'chrome'`）加上關掉 `AutomationControlled`，才會被當成一般使用者。這只是降低被誤判的機率，滑塊還是真人拖的。
+用系統 Chrome、不用 Playwright 內建的 Chromium：內建的會露出 `navigator.webdriver` 這種自動化特徵，實測會被 Geetest 直接封（Error 60500），連人工都拖不動；換成系統 Chrome（`channel: 'chrome'`）再關掉 `AutomationControlled` 就正常了。這步只是降低被誤判的機率，滑塊還是真人拖的。
 
-**重用登入靠持久化設定檔，不用 storageState。** SWAG 的登入 token 放在 IndexedDB，不是 cookie / localStorage，而 Playwright 的 `storageState` 不含 IndexedDB，拿它重用沒用。持久化設定檔會把 IndexedDB 一起存到磁碟，才能跨次重用。
+**重用登入為什麼不用 storageState。** SWAG 的登入 token 存在 IndexedDB，不是 cookie / localStorage，而 `storageState` 不含 IndexedDB，拿它重用沒用。所以改用持久化設定檔，把 IndexedDB 一起寫到磁碟才能跨次重用。
 
-**定位器封在 `pages/`，帳密走 `.env`。** 測試檔只呼叫頁面方法，不寫死選擇器和帳密。
-
-**等待全用動態等待。** 靠 `toBeVisible` / `toBeHidden` 這類，沒有寫死 sleep。過驗證是等 Modal 消失，不是等固定秒數。
-
-**狀態判定集中在 `utils/testStatus.ts`。** PASS/FAIL/BLOCK 和輸出格式放一起，之後要接報告工具可以共用。
-
-失敗會自動留截圖、錄影、trace（`screenshot`/`video`/`trace` 都設 on-failure）。
+其他就照一般原則：選擇器封在 `pages/`、帳密走 `.env`、等待全用 Playwright 的動態等待（沒寫死 sleep，過驗證是等 Modal 消失而不是固定秒數）、PASS/FAIL 狀態集中在 `utils/testStatus.ts` 方便之後接報告工具。失敗會自動留截圖、錄影和 trace。
 
 ## CI 怎麼跑登入測試
 
